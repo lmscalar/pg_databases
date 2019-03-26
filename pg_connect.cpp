@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <libpq-fe.h>
 #include <string>
+#include <boost/format.hpp>
 
 using namespace std;
 
@@ -27,7 +28,7 @@ PGconn *ConnectDB()
 {
     PGconn *dbconn = nullptr;
     // string query_str = "SELECT * FROM futures where contractquotename='CLJ19'";
-    
+   	 
     const char *connection_str = "dbname=securities_database user=postgres password=inster137$ hostaddr=127.0.0.1 port=5432";
     dbconn = PQconnectdb(connection_str);
     
@@ -86,7 +87,8 @@ void InsertEmpoyeeRec(PGconn *conn, const char * fname, const char * lname)
 
 // Fetch employee record and display it on screen
 void FetchEmployeeRec(PGconn *conn)
-{
+{   
+    using namespace boost;
     // This will hold the number of fields in employee table
     int nFields;
     
@@ -104,7 +106,25 @@ void FetchEmployeeRec(PGconn *conn)
     
     // Fetch rows from employee table
     // res = PQexec(conn, "DECLARE emprec CURSOR FOR SELECT * from employee");
-    res = PQexec(conn, "DECLARE emprec CURSOR FOR SELECT tradedate, open_, high, low, settle FROM futures WHERE contractquotename='CLK19' AND tradedate >= '2019-01-01'");
+    
+    string tradedate;
+    string product;
+    
+    cout << "Enter tradedate start (2019-01-01): ";
+    cin >> tradedate;
+
+    cout << "Enter product symbol (e.g. CLK19) : " ;
+    cin >> product;
+    
+    tradedate = (format("'%s'") % tradedate).str();
+    product = (format("'%s'") % product).str();
+    string sqlStr = "DECLARE emprec CURSOR FOR SELECT";
+    const string varStr = (format("%s tradedate, open_, high, low, settle, volume, priorint FROM futures WHERE contractquotename=%s AND tradedate >=%s") 
+                                                        % sqlStr % product % tradedate).str();  
+    const char * var = varStr.c_str();   // convert to const char * str for input inot PQexec
+
+    // res = PQexec(conn, "DECLARE emprec CURSOR FOR SELECT tradedate, open_, high, low, settle FROM futures WHERE contractquotename='CLK19' AND tradedate >= '2019-01-01'");
+    res = PQexec(conn, var); 
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         printf("DECLARE CURSOR failed!");
@@ -127,14 +147,14 @@ void FetchEmployeeRec(PGconn *conn)
     // Get the field name
     nFields = PQnfields(res);
     
-    // Prepare the header with employee table field name
-    // printf("\nFetch employee record: ");
-    printf("\n********************************************************************************\n");
+    // Prepare the header with  table field name
+    // printf("\nFetch table record: ");
+    printf("\n********************************************************************************************************\n");
     for (int i = 0; i < nFields; i++)
         printf("%-15s", PQfname(res, i));
-    printf("\n*********************************************************************************\n");
+    printf("\n********************************************************************************************************\n");
     
-    // Nest, print out the employee record for each row
+    // Next, print out the table record for each row
     for (int i = 0; i < PQntuples(res); i++)
     {
         for (int j = 0; j < nFields; j++)
